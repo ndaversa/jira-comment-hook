@@ -1,1 +1,1 @@
-worker jira-comment-hook.go
+worker jira-comment-hook

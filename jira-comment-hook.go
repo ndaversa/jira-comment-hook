@@ -65,6 +65,10 @@ func (e Entry) isComment() bool {
 	return e.Category.Term == "comment"
 }
 
+func (e Entry) involves(subject string) bool {
+	return strings.Contains(e.Content, subject)
+}
+
 func GetFeed() Feed {
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", os.Getenv("JIRA_URL")+"/activity?maxItems=100", nil)
@@ -109,21 +113,21 @@ func HtmlToSlackMarkup(s string) string {
 
 func SendRichPostToSlack(title string, comment string) {
 	message := `
-	{
-	  "attachments": [
-	    {
-	      "fallback":"%v",
-	      "pretext":"%v",
-	      "color":"#0000D0",
-	      "fields":[
-	        {
-	          "value":"%v",
-	          "short":false
-	        }
-	      ]
-	    }
-	  ]
-	}`
+  {
+    "attachments": [
+      {
+        "fallback":"%v",
+        "pretext":"%v",
+        "color":"#3572b0",
+        "fields":[
+          {
+            "value":"%v",
+            "short":false
+          }
+        ]
+      }
+    ]
+  }`
 
 	payload := fmt.Sprintf(message, title, title, comment)
 	fmt.Println("payload:")
@@ -146,7 +150,7 @@ func SyncSlackMessages(anchor time.Time) {
 	log.Print("Syncing Slack Messages")
 	feed := GetFeed()
 	for _, e := range feed.Entries {
-		if e.isComment() && e.Updated.After(anchor) {
+		if e.isComment() && e.involves("Nino") && e.Updated.After(anchor) {
 			log.Print("-----------------------")
 			log.Print("Identified new message:", e.Id)
 			title := HtmlToSlackMarkup(e.Title)
@@ -165,8 +169,8 @@ func main() {
 	SyncSlackMessages(lastSyncTime)
 	lastSyncTime = time.Now()
 
-	//now do every 15 seconds
-	c := time.Tick(10 * time.Second)
+	//poll every 1 min
+	c := time.Tick(60 * time.Second)
 	for now := range c {
 		SyncSlackMessages(lastSyncTime)
 		lastSyncTime = now
